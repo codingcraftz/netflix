@@ -51,6 +51,9 @@ function Banner({ netflixOriginals }: Props) {
             src="/test.mp4"
             className="w-full h-full object-contain"
             controls
+            playsInline={false}
+            x-webkit-airplay="allow"
+            preload="auto"
             onEnded={() => setIsPlaying(false)}
           />
         </div>
