@@ -28,6 +28,18 @@ function Banner({ netflixOriginals }: Props) {
 
   const handlePlay = () => {
     setIsPlaying(true)
+    setTimeout(() => {
+      if (videoRef.current) {
+        try {
+          videoRef.current.play()
+          if (document.fullscreenEnabled) {
+            videoRef.current.requestFullscreen()
+          }
+        } catch (err) {
+          console.error('비디오 재생 실패:', err)
+        }
+      }
+    }, 100)
   }
 
   return (
@@ -37,9 +49,8 @@ function Banner({ netflixOriginals }: Props) {
           <video
             ref={videoRef}
             src="/test.mp4"
-            className="w-full h-full"
+            className="w-full h-full object-contain"
             controls
-            controlsList="nodownload nofullscreen"
             onEnded={() => setIsPlaying(false)}
           />
         </div>
