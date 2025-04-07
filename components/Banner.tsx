@@ -1,11 +1,12 @@
 import Image from 'next/image'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { baseUrl } from '../constants/movie'
 import { Movie } from '../typings'
 import { FaPlay } from 'react-icons/fa'
 import { InformationCircleIcon } from '@heroicons/react/24/outline'
 import { useRecoilState } from 'recoil'
 import { modalState, movieState } from '../atoms/modalAtom'
+import { useRouter } from 'next/router'
 
 interface Props {
   netflixOriginals: Movie[]
@@ -15,8 +16,7 @@ function Banner({ netflixOriginals }: Props) {
   const [movie, setMovie] = useState<Movie | null>(null)
   const [showModal, setShowModal] = useRecoilState(modalState)
   const [currentMovie, setCurrentMovie] = useRecoilState(movieState)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const router = useRouter()
 
   useEffect(() => {
     if (netflixOriginals && netflixOriginals.length > 0) {
@@ -27,35 +27,11 @@ function Banner({ netflixOriginals }: Props) {
   }, [netflixOriginals])
 
   const handlePlay = () => {
-    setIsPlaying(true)
-    setTimeout(() => {
-      if (videoRef.current) {
-        try {
-          videoRef.current.play()
-          if (document.fullscreenEnabled) {
-            videoRef.current.requestFullscreen()
-          }
-        } catch (err) {
-          console.error('비디오 재생 실패:', err)
-        }
-      }
-    }, 100)
+    router.push('/videoPlayer')
   }
 
   return (
     <div className="relative flex flex-col space-y-4 justify-end pb-12 h-[75vh] w-screen">
-      {isPlaying && (
-        <div className="fixed inset-0 bg-black z-[9999]">
-          <video
-            ref={videoRef}
-            src="/test.mp4"
-            className="w-full h-full object-contain"
-            controls
-            preload="auto"
-            // playsInline 제거하면 모바일에서 전체화면으로 열림
-          />
-        </div>
-      )}
       <div className="absolute top-0 left-0 -z-10 h-screen w-screen">
         <Image
           src="/main_image.webp"
