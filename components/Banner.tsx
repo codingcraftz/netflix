@@ -51,10 +51,8 @@ function Banner({ netflixOriginals }: Props) {
             src="/test.mp4"
             className="w-full h-full object-contain"
             controls
-            playsInline={false}
-            x-webkit-airplay="allow"
             preload="auto"
-            onEnded={() => setIsPlaying(false)}
+            // playsInline 제거하면 모바일에서 전체화면으로 열림
           />
         </div>
       )}
