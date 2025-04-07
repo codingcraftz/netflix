@@ -13,6 +13,7 @@ import { useRecoilState } from 'recoil'
 import { modalState, movieState } from '../atoms/modalAtom'
 import { Element, Genre } from '../typings'
 import Image from 'next/image'
+import { useRouter } from 'next/router'
 
 function Modal() {
   const [showModal, setShowModal] = useRecoilState(modalState)
@@ -20,8 +21,7 @@ function Modal() {
   const [trailer, setTrailer] = useState('')
   const [genres, setGenres] = useState<Genre[]>([])
   const [muted, setMuted] = useState(true)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const router = useRouter()
 
   useEffect(() => {
     if (!movie) return
@@ -53,16 +53,10 @@ function Modal() {
 
   const handleClose = () => {
     setShowModal(false)
-    setIsPlaying(false)
   }
 
   const handlePlay = () => {
-    setIsPlaying(true)
-    if (videoRef.current) {
-      videoRef.current.play().catch((err) => {
-        console.error('비디오 재생 실패:', err)
-      })
-    }
+    router.push('/videoPlayer')
   }
 
   console.log(trailer)
@@ -74,19 +68,6 @@ function Modal() {
       className="fixed !top-7 left-0 right-0 z-50 mx-auto w-full max-w-5xl overflow-hidden overflow-y-scroll rounded-md scrollbar-hide"
     >
       <>
-        {isPlaying && (
-          <div className="fixed inset-0 bg-black z-[9999]">
-            <video
-              ref={videoRef}
-              src="/test.mp4"
-              className="w-full h-full object-contain"
-              controls
-              preload="auto"
-              // playsInline 제거하면 모바일에서 전체화면으로 열림
-            />
-          </div>
-        )}
-
         <button
           onClick={handleClose}
           className="modalButton absolute right-5 top-5 !z-40 h-9 w-9 border-none bg-[#181818] hover:bg-[#181818]"
@@ -331,8 +312,7 @@ function Modal() {
                   </div>
                   <div className="ptrack-content text-sm text-[#dfdfdf]">
                     억척스러운 어머니 아래서 야무지고 똘똘하게 자라난 애순. 그
-                    작은 마음속에 헤아릴 수 없도록 많은 꿈을 품고 산다. 하지만
-                    자꾸 서러운 일들이 닥치며 어린 애순을 힘들게 한다.
+                    작은 마음속에 헤아릴 수 없도록 많은 꿈을 품고 산다.
                   </div>
                 </div>
               </div>
