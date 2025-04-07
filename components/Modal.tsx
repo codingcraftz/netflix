@@ -59,9 +59,6 @@ function Modal() {
   const handlePlay = () => {
     setIsPlaying(true)
     if (videoRef.current) {
-      videoRef.current.requestFullscreen().catch((err) => {
-        console.error('전체화면 모드 진입 실패:', err)
-      })
       videoRef.current.play().catch((err) => {
         console.error('비디오 재생 실패:', err)
       })
@@ -84,6 +81,9 @@ function Modal() {
               src="/test.mp4"
               className="w-full h-full object-contain"
               controls
+              playsInline={false}
+              x-webkit-airplay="allow"
+              preload="auto"
               onEnded={() => setIsPlaying(false)}
             />
           </div>
