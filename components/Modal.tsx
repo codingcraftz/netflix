@@ -84,6 +84,7 @@ function Modal() {
               src="/test.mp4"
               className="w-full h-full"
               controls
+              controlsList="nodownload nofullscreen"
               onEnded={() => setIsPlaying(false)}
             />
           </div>
