@@ -15,9 +15,23 @@ export default function VideoPlayer() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [showControls, setShowControls] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<HTMLIFrameElement>(null)
   const [playerReady, setPlayerReady] = useState(false)
+
+  // 모바일 기기 감지
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent.toLowerCase()
+      return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+        userAgent
+      )
+    }
+
+    setIsMobile(checkMobile())
+  }, [])
 
   useEffect(() => {
     // Vimeo Player SDK 초기화
@@ -57,10 +71,38 @@ export default function VideoPlayer() {
             console.log('음소거 해제됨')
           })
           .catch((err: any) => console.error('음소거 해제 에러:', err))
+
+        // 모바일에서는 자동재생 정책 때문에 로딩 후 바로 재생
+        if (isMobile) {
+          try {
+            player
+              .play()
+              .then(() => {
+                console.log('모바일에서 비디오 재생 시작')
+                setIsPlaying(true)
+                setIsLoading(false)
+              })
+              .catch((err: any) => {
+                console.error('모바일 재생 에러:', err)
+                // 자동 재생이 실패한 경우 플레이 오버레이 표시
+                setIsLoading(false)
+              })
+          } catch (err) {
+            console.error('모바일 재생 시도 에러:', err)
+            setIsLoading(false)
+          }
+        }
       })
 
-      // 버퍼링 완료시 로딩 상태 해제
+      // 재생 완료된 경우
       player.on('playing', () => {
+        setIsPlaying(true)
+        setIsLoading(false)
+      })
+
+      // 에러 처리
+      player.on('error', (err: any) => {
+        console.error('Vimeo 플레이어 에러:', err)
         setIsLoading(false)
       })
     }
@@ -70,8 +112,20 @@ export default function VideoPlayer() {
       setIsLoading(false)
     }, 3000)
 
-    // 터치/클릭 이벤트로 컨트롤 토글
+    // 터치/클릭 이벤트로 컨트롤 토글 또는 비디오 재생
     const toggleControls = () => {
+      if (isMobile && !isPlaying && player) {
+        // 모바일에서 첫 클릭 시 비디오 재생 시도
+        player
+          .play()
+          .then(() => {
+            setIsPlaying(true)
+          })
+          .catch((err: any) => {
+            console.error('클릭 후 재생 실패:', err)
+          })
+      }
+
       setShowControls((prev) => !prev)
       // 3초 후 컨트롤 숨기기
       if (!showControls) {
@@ -94,10 +148,40 @@ export default function VideoPlayer() {
         player.unload()
       }
     }
-  }, [showControls, playerReady])
+  }, [showControls, playerReady, isMobile, isPlaying])
 
   const handleBack = () => {
     router.back()
+  }
+
+  // 비디오 재생 시작하기 (모바일용)
+  const startPlayback = () => {
+    if (playerRef.current && window.Vimeo) {
+      const player = new window.Vimeo.Player(playerRef.current)
+      player
+        .play()
+        .then(() => {
+          setIsPlaying(true)
+        })
+        .catch((err) => {
+          console.error('수동 재생 시도 실패:', err)
+        })
+    }
+  }
+
+  // iframe URL 생성: 모바일에서는 다른 설정 적용
+  const getVideoSrc = () => {
+    const baseUrl = 'https://player.vimeo.com/video/1076878012?h=d0a1cf5fc4'
+    const commonParams =
+      '&title=0&byline=0&portrait=0&transparent=0&dnt=1&quality=1080p'
+
+    if (isMobile) {
+      // 모바일: 자동재생을 위해 처음에는 음소거, playsinline 추가
+      return `${baseUrl}${commonParams}&controls=1&playsinline=1&muted=1`
+    } else {
+      // 데스크톱: 소리와 함께 자동 재생
+      return `${baseUrl}&autoplay=1${commonParams}&controls=0&muted=0`
+    }
   }
 
   return (
@@ -118,10 +202,34 @@ export default function VideoPlayer() {
           </div>
         )}
 
+        {/* 모바일에서 비디오가 자동 재생되지 않을 때 표시할 재생 버튼 */}
+        {isMobile && !isPlaying && !isLoading && (
+          <div
+            className="absolute inset-0 flex items-center justify-center z-30 bg-black/70"
+            onClick={startPlayback}
+          >
+            <div className="p-6 rounded-full bg-red-600">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="white"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+            </div>
+          </div>
+        )}
+
         <div className="w-full h-full">
           <iframe
             ref={playerRef}
-            src="https://player.vimeo.com/video/1076878012?h=d0a1cf5fc4&autoplay=1&title=0&byline=0&portrait=0&controls=0&dnt=1&quality=1080p&transparent=0&muted=0"
+            src={getVideoSrc()}
             className="w-[calc(100%+240px)] h-[calc(100%+150px)] absolute -top-[75px] -left-[120px]"
             frameBorder="0"
             allow="autoplay; fullscreen; picture-in-picture"
