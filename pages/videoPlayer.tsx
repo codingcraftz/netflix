@@ -41,6 +41,22 @@ export default function VideoPlayer() {
             }
           })
           .catch((err: any) => console.error('화질 설정 에러:', err))
+
+        // 소리 켜기
+        player
+          .setVolume(1)
+          .then(() => {
+            console.log('소리 활성화됨')
+          })
+          .catch((err: any) => console.error('볼륨 설정 에러:', err))
+
+        // 음소거 해제
+        player
+          .setMuted(false)
+          .then(() => {
+            console.log('음소거 해제됨')
+          })
+          .catch((err: any) => console.error('음소거 해제 에러:', err))
       })
 
       // 버퍼링 완료시 로딩 상태 해제
@@ -105,7 +121,7 @@ export default function VideoPlayer() {
         <div className="w-full h-full">
           <iframe
             ref={playerRef}
-            src="https://player.vimeo.com/video/1076878012?h=d0a1cf5fc4&autoplay=1&title=0&byline=0&portrait=0&background=1&controls=0&dnt=1&quality=1080p&transparent=0"
+            src="https://player.vimeo.com/video/1076878012?h=d0a1cf5fc4&autoplay=1&title=0&byline=0&portrait=0&controls=0&dnt=1&quality=1080p&transparent=0&muted=0"
             className="w-[calc(100%+240px)] h-[calc(100%+150px)] absolute -top-[75px] -left-[120px]"
             frameBorder="0"
             allow="autoplay; fullscreen; picture-in-picture"
