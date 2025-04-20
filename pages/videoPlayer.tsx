@@ -16,21 +16,42 @@ export default function VideoPlayer() {
   const [isLoading, setIsLoading] = useState(true)
   const [showControls, setShowControls] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [isTablet, setIsTablet] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<HTMLIFrameElement>(null)
   const [playerReady, setPlayerReady] = useState(false)
 
-  // 모바일 기기 감지
+  // 기기 타입 감지 (모바일, 태블릿 분리)
   useEffect(() => {
-    const checkMobile = () => {
+    const detectDeviceType = () => {
       const userAgent = navigator.userAgent.toLowerCase()
-      return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-        userAgent
-      )
+
+      // 태블릿 감지 (iPad 명시적 감지 추가)
+      const isTabletDevice =
+        /ipad/i.test(userAgent) ||
+        (navigator.maxTouchPoints &&
+          navigator.maxTouchPoints > 2 &&
+          /macintosh/i.test(userAgent)) || // iPad Pro with iPadOS
+        (/android/i.test(userAgent) && !/mobile/i.test(userAgent))
+
+      // 모바일 감지
+      const isMobileDevice =
+        /android|webos|iphone|ipod|blackberry|iemobile|opera mini/i.test(
+          userAgent
+        ) && !isTabletDevice
+
+      setIsTablet(isTabletDevice)
+      setIsMobile(isMobileDevice)
+
+      console.log('디바이스 감지:', {
+        isTablet: isTabletDevice,
+        isMobile: isMobileDevice,
+        userAgent,
+      })
     }
 
-    setIsMobile(checkMobile())
+    detectDeviceType()
   }, [])
 
   useEffect(() => {
@@ -39,72 +60,79 @@ export default function VideoPlayer() {
 
     // 플레이어가 준비되고 SDK가 로드되면 화질 설정
     if (playerReady && playerRef.current && window.Vimeo) {
-      // @ts-ignore
-      player = new window.Vimeo.Player(playerRef.current)
+      try {
+        // @ts-ignore
+        player = new window.Vimeo.Player(playerRef.current)
 
-      // 가능한 최고 화질로 설정 (1080p)
-      player.on('loaded', () => {
-        player
-          .getQualities()
-          .then((qualities: any) => {
-            // 사용 가능한 가장 높은 화질 찾기
-            const highestQuality = qualities[qualities.length - 1]
-            if (highestQuality) {
-              player.setQuality(highestQuality)
-              console.log('화질 설정됨:', highestQuality)
-            }
-          })
-          .catch((err: any) => console.error('화질 설정 에러:', err))
+        // 가능한 최고 화질로 설정 (1080p)
+        player.on('loaded', () => {
+          player
+            .getQualities()
+            .then((qualities: any) => {
+              // 사용 가능한 가장 높은 화질 찾기
+              const highestQuality = qualities[qualities.length - 1]
+              if (highestQuality) {
+                player.setQuality(highestQuality)
+                console.log('화질 설정됨:', highestQuality)
+              }
+            })
+            .catch((err: any) => console.error('화질 설정 에러:', err))
 
-        // 소리 켜기
-        player
-          .setVolume(1)
-          .then(() => {
-            console.log('소리 활성화됨')
-          })
-          .catch((err: any) => console.error('볼륨 설정 에러:', err))
+          // 소리 켜기
+          player
+            .setVolume(1)
+            .then(() => {
+              console.log('소리 활성화됨')
+            })
+            .catch((err: any) => console.error('볼륨 설정 에러:', err))
 
-        // 음소거 해제
-        player
-          .setMuted(false)
-          .then(() => {
-            console.log('음소거 해제됨')
-          })
-          .catch((err: any) => console.error('음소거 해제 에러:', err))
+          // 음소거 해제
+          player
+            .setMuted(false)
+            .then(() => {
+              console.log('음소거 해제됨')
+            })
+            .catch((err: any) => console.error('음소거 해제 에러:', err))
 
-        // 모바일에서는 자동재생 정책 때문에 로딩 후 바로 재생
-        if (isMobile) {
-          try {
-            player
-              .play()
-              .then(() => {
-                console.log('모바일에서 비디오 재생 시작')
-                setIsPlaying(true)
+          // 태블릿이나 모바일에서는 자동재생 정책 때문에 로딩 후 바로 재생
+          if (isMobile || isTablet) {
+            setTimeout(() => {
+              try {
+                player
+                  .play()
+                  .then(() => {
+                    console.log('모바일/태블릿에서 비디오 재생 시작')
+                    setIsPlaying(true)
+                    setIsLoading(false)
+                  })
+                  .catch((err: any) => {
+                    console.error('모바일/태블릿 재생 에러:', err)
+                    // 자동 재생이 실패한 경우 플레이 오버레이 표시
+                    setIsLoading(false)
+                  })
+              } catch (err) {
+                console.error('모바일/태블릿 재생 시도 에러:', err)
                 setIsLoading(false)
-              })
-              .catch((err: any) => {
-                console.error('모바일 재생 에러:', err)
-                // 자동 재생이 실패한 경우 플레이 오버레이 표시
-                setIsLoading(false)
-              })
-          } catch (err) {
-            console.error('모바일 재생 시도 에러:', err)
-            setIsLoading(false)
+              }
+            }, 500) // 약간의 지연 후 재생 시도
           }
-        }
-      })
+        })
 
-      // 재생 완료된 경우
-      player.on('playing', () => {
-        setIsPlaying(true)
-        setIsLoading(false)
-      })
+        // 재생 완료된 경우
+        player.on('playing', () => {
+          setIsPlaying(true)
+          setIsLoading(false)
+        })
 
-      // 에러 처리
-      player.on('error', (err: any) => {
-        console.error('Vimeo 플레이어 에러:', err)
+        // 에러 처리
+        player.on('error', (err: any) => {
+          console.error('Vimeo 플레이어 에러:', err)
+          setIsLoading(false)
+        })
+      } catch (error) {
+        console.error('Vimeo Player 초기화 에러:', error)
         setIsLoading(false)
-      })
+      }
     }
 
     // 로딩 상태 타이머 (백업)
@@ -114,8 +142,8 @@ export default function VideoPlayer() {
 
     // 터치/클릭 이벤트로 컨트롤 토글 또는 비디오 재생
     const toggleControls = () => {
-      if (isMobile && !isPlaying && player) {
-        // 모바일에서 첫 클릭 시 비디오 재생 시도
+      if ((isMobile || isTablet) && !isPlaying && player) {
+        // 모바일/태블릿에서 첫 클릭 시 비디오 재생 시도
         player
           .play()
           .then(() => {
@@ -148,36 +176,56 @@ export default function VideoPlayer() {
         player.unload()
       }
     }
-  }, [showControls, playerReady, isMobile, isPlaying])
+  }, [showControls, playerReady, isMobile, isTablet, isPlaying])
 
   const handleBack = () => {
     router.back()
   }
 
-  // 비디오 재생 시작하기 (모바일용)
+  // 비디오 재생 시작하기 (모바일/태블릿용)
   const startPlayback = () => {
     if (playerRef.current && window.Vimeo) {
-      const player = new window.Vimeo.Player(playerRef.current)
-      player
-        .play()
-        .then(() => {
-          setIsPlaying(true)
-        })
-        .catch((err) => {
-          console.error('수동 재생 시도 실패:', err)
-        })
+      try {
+        const player = new window.Vimeo.Player(playerRef.current)
+        player
+          .play()
+          .then(() => {
+            setIsPlaying(true)
+          })
+          .catch((err: any) => {
+            console.error('수동 재생 시도 실패:', err)
+
+            // iPad에서 재생 실패 시 새로운 접근 시도
+            if (isTablet) {
+              // 직접 네이티브 비디오 재생 트리거
+              const videoEl = document.querySelector('iframe')
+              if (videoEl) {
+                videoEl.setAttribute(
+                  'src',
+                  videoEl.getAttribute('src') + '&autoplay=1'
+                )
+                setTimeout(() => setIsPlaying(true), 500)
+              }
+            }
+          })
+      } catch (err) {
+        console.error('재생 시도 중 예외 발생:', err)
+      }
     }
   }
 
-  // iframe URL 생성: 모바일에서는 다른 설정 적용
+  // iframe URL 생성: 기기 타입에 따라 다른 설정 적용
   const getVideoSrc = () => {
     const baseUrl = 'https://player.vimeo.com/video/1076878012?h=d0a1cf5fc4'
     const commonParams =
       '&title=0&byline=0&portrait=0&transparent=0&dnt=1&quality=1080p'
 
-    if (isMobile) {
+    if (isTablet) {
+      // 태블릿: iPad/Android 태블릿 최적화
+      return `${baseUrl}${commonParams}&playsinline=1&controls=1&muted=1`
+    } else if (isMobile) {
       // 모바일: 자동재생을 위해 처음에는 음소거, playsinline 추가
-      return `${baseUrl}${commonParams}&controls=1&playsinline=1&muted=1`
+      return `${baseUrl}${commonParams}&playsinline=1&controls=1&muted=1`
     } else {
       // 데스크톱: 소리와 함께 자동 재생
       return `${baseUrl}&autoplay=1${commonParams}&controls=0&muted=0`
@@ -190,6 +238,7 @@ export default function VideoPlayer() {
       <Script
         src="https://player.vimeo.com/api/player.js"
         onLoad={() => setPlayerReady(true)}
+        strategy="beforeInteractive"
       />
 
       <div
@@ -202,8 +251,8 @@ export default function VideoPlayer() {
           </div>
         )}
 
-        {/* 모바일에서 비디오가 자동 재생되지 않을 때 표시할 재생 버튼 */}
-        {isMobile && !isPlaying && !isLoading && (
+        {/* 모바일/태블릿에서 비디오가 자동 재생되지 않을 때 표시할 재생 버튼 */}
+        {(isMobile || isTablet) && !isPlaying && !isLoading && (
           <div
             className="absolute inset-0 flex items-center justify-center z-30 bg-black/70"
             onClick={startPlayback}
@@ -223,6 +272,9 @@ export default function VideoPlayer() {
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
               </svg>
             </div>
+            <p className="absolute bottom-40 text-white text-lg font-bold">
+              탭하여 재생하기
+            </p>
           </div>
         )}
 
