@@ -68,7 +68,18 @@ export default function VideoPlayer() {
         // 자동 재생 시도 표시
         setAutoplayAttempted(true)
 
-        // 처음부터 자동 재생 시도
+        // 이중 안전장치: iframe이 로드된 후 명시적으로 재생 시도
+        setTimeout(() => {
+          if (player) {
+            console.log('강제 재생 시도')
+            player
+              .setMuted(true)
+              .then(() => player.play())
+              .catch((err: any) => console.error('강제 재생 실패:', err))
+          }
+        }, 1000)
+
+        // 이후 처음부터 자동 재생 시도
         player.play().catch((err: any) => {
           console.error('자동 재생 실패:', err)
 
@@ -93,8 +104,19 @@ export default function VideoPlayer() {
           }
         })
 
-        // 가능한 최고 화질로 설정 (1080p)
+        // 페이지 로드된 이벤트
         player.on('loaded', () => {
+          // 로드된 후 다시 한번 재생 시도
+          player.setMuted(true).then(() => {
+            player
+              .play()
+              .then(() => console.log('로드 후 재생 시도 성공'))
+              .catch((err: any) =>
+                console.error('로드 후 재생 시도 실패:', err)
+              )
+          })
+
+          // 가능한 최고 화질로 설정
           player
             .getQualities()
             .then((qualities: any) => {
@@ -247,14 +269,14 @@ export default function VideoPlayer() {
       '&title=0&byline=0&portrait=0&transparent=0&dnt=1&quality=1080p'
 
     if (isTablet) {
-      // 태블릿: 넷플릭스 스타일 - 컨트롤 없음, 풀스크린 최적화
-      return `${baseUrl}&autoplay=1${commonParams}&playsinline=1&controls=0&muted=1&autopause=0&background=1`
+      // 태블릿: 넷플릭스 스타일 - 컨트롤 없음, 풀스크린 최적화 (자동재생을 위해 muted 먼저 배치)
+      return `${baseUrl}&muted=1&autoplay=1${commonParams}&playsinline=1&controls=0&autopause=0&background=1`
     } else if (isMobile) {
-      // 모바일: 넷플릭스 스타일 - 컨트롤 최소화
-      return `${baseUrl}&autoplay=1${commonParams}&playsinline=1&controls=0&muted=1`
+      // 모바일: 넷플릭스 스타일 - 컨트롤 최소화 (자동재생을 위해 muted 먼저 배치)
+      return `${baseUrl}&muted=1&autoplay=1${commonParams}&playsinline=1&controls=0`
     } else {
-      // 데스크톱: 소리와 함께 자동 재생, 컨트롤 없음
-      return `${baseUrl}&autoplay=1${commonParams}&controls=0&muted=0`
+      // 데스크톱: 처음에는 무음으로 자동 재생하고 나중에 소리 활성화
+      return `${baseUrl}&muted=1&autoplay=1${commonParams}&controls=0`
     }
   }
 
