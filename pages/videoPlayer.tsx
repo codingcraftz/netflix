@@ -106,16 +106,6 @@ export default function VideoPlayer() {
               }
             })
             .catch((err: any) => console.error('화질 설정 에러:', err))
-
-          // 태블릿에서 재생이 안되는 경우 강제로 소리 없이 재생 시도
-          if (isTablet && !isPlaying && autoplayAttempted) {
-            player.setMuted(true).then(() => {
-              player
-                .play()
-                .then(() => console.log('소리 없이 재생 시작'))
-                .catch((e: any) => console.error('최종 재생 시도 실패:', e))
-            })
-          }
         })
 
         // 재생 시작된 경우
@@ -257,13 +247,13 @@ export default function VideoPlayer() {
       '&title=0&byline=0&portrait=0&transparent=0&dnt=1&quality=1080p'
 
     if (isTablet) {
-      // 태블릿: 무음으로 자동재생 (브라우저 정책에 맞춤)
-      return `${baseUrl}&autoplay=1${commonParams}&playsinline=1&controls=1&muted=1&autopause=0&background=1`
+      // 태블릿: 넷플릭스 스타일 - 컨트롤 없음, 풀스크린 최적화
+      return `${baseUrl}&autoplay=1${commonParams}&playsinline=1&controls=0&muted=1&autopause=0&background=1`
     } else if (isMobile) {
-      // 모바일: 자동재생을 위해 처음에는 음소거, playsinline 추가
-      return `${baseUrl}&autoplay=1${commonParams}&playsinline=1&controls=1&muted=1`
+      // 모바일: 넷플릭스 스타일 - 컨트롤 최소화
+      return `${baseUrl}&autoplay=1${commonParams}&playsinline=1&controls=0&muted=1`
     } else {
-      // 데스크톱: 소리와 함께 자동 재생
+      // 데스크톱: 소리와 함께 자동 재생, 컨트롤 없음
       return `${baseUrl}&autoplay=1${commonParams}&controls=0&muted=0`
     }
   }
@@ -325,128 +315,11 @@ export default function VideoPlayer() {
           ></iframe>
         </div>
 
-        {/* 아이패드 전체화면 버튼 */}
-        {isTablet && isPlaying && (
-          <button
-            onClick={openInVimeoApp}
-            className="absolute top-5 right-5 p-3 rounded-full bg-white/30 text-white z-30 backdrop-blur-sm"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M15 3h6v6M14 10l7-7M9 21H3v-6M10 14l-7 7" />
-            </svg>
-          </button>
-        )}
-
-        {/* 음소거 해제 버튼 (태블릿/모바일 자동재생 시) */}
-        {(isTablet || isMobile) && isPlaying && (
-          <div className="absolute bottom-24 left-0 right-0 flex justify-center z-30">
-            <button
-              className="bg-white/20 p-3 rounded-full text-white backdrop-blur-sm"
-              onClick={() => {
-                if (playerRef.current && window.Vimeo) {
-                  try {
-                    const player = new window.Vimeo.Player(playerRef.current)
-                    player.setMuted(false)
-                    player.setVolume(1)
-                  } catch (err) {
-                    console.error('음소거 해제 에러:', err)
-                  }
-                }
-              }}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* 커스텀 네이티브 스타일 컨트롤 */}
-        {showControls && (
-          <div className="absolute bottom-10 left-0 right-0 flex items-center justify-center gap-8 z-10 transition-opacity duration-300 px-8">
-            <button className="bg-white/20 p-4 rounded-full text-white backdrop-blur-sm">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-              </svg>
-            </button>
-            <button className="bg-white/20 p-5 rounded-full text-white backdrop-blur-sm">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="30"
-                height="30"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10"></circle>
-                <polygon points="10 8 16 12 10 16 10 8"></polygon>
-              </svg>
-            </button>
-            <button className="bg-white/20 p-4 rounded-full text-white backdrop-blur-sm">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3"></path>
-                <path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"></path>
-                <path d="M12 20v2"></path>
-                <path d="M12 14v2"></path>
-                <path d="M12 8v2"></path>
-                <path d="M12 2v2"></path>
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* 뒤로가기 버튼 - 컨트롤과 함께 표시/숨김 */}
+        {/* 넷플릭스 스타일 미니멀 UI - 뒤로가기 버튼만 표시 */}
         {showControls && (
           <button
             onClick={handleBack}
-            className="absolute top-5 left-5 p-3 rounded-full bg-white/30 text-white z-30 backdrop-blur-sm transition-opacity duration-300"
+            className="absolute top-5 left-5 p-3 rounded-full bg-black/30 text-white z-30 backdrop-blur-sm transition-opacity duration-300"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
