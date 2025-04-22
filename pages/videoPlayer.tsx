@@ -182,6 +182,23 @@ export default function VideoPlayer() {
     router.back()
   }
 
+  // 아이패드에서 Vimeo 앱으로 열기
+  const openInVimeoApp = () => {
+    if (isTablet) {
+      // Vimeo 앱 URL 스키마 또는 웹 URL
+      const vimeoAppUrl = `vimeo://1077598545`
+      const vimeoWebUrl = `https://vimeo.com/1077598545/d079ea1a03`
+
+      // 앱 열기 시도 (앱이 설치되어 있지 않으면 웹으로 이동)
+      window.location.href = vimeoAppUrl
+
+      // 타임아웃으로 앱이 열리지 않았을 경우 웹 버전으로 이동
+      setTimeout(() => {
+        window.location.href = vimeoWebUrl
+      }, 500)
+    }
+  }
+
   // 비디오 재생 시작하기 (모바일/태블릿용)
   const startPlayback = () => {
     if (playerRef.current && window.Vimeo) {
@@ -216,7 +233,7 @@ export default function VideoPlayer() {
 
   // iframe URL 생성: 기기 타입에 따라 다른 설정 적용
   const getVideoSrc = () => {
-    const baseUrl = 'https://player.vimeo.com/video/1076878012?h=d0a1cf5fc4'
+    const baseUrl = 'https://player.vimeo.com/video/1077598545?h=d079ea1a03'
     const commonParams =
       '&title=0&byline=0&portrait=0&transparent=0&dnt=1&quality=1080p'
 
@@ -288,6 +305,28 @@ export default function VideoPlayer() {
             allowFullScreen
           ></iframe>
         </div>
+
+        {/* 아이패드 전체화면 버튼 */}
+        {isTablet && isPlaying && (
+          <button
+            onClick={openInVimeoApp}
+            className="absolute top-5 right-5 p-3 rounded-full bg-white/30 text-white z-30 backdrop-blur-sm"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M15 3h6v6M14 10l7-7M9 21H3v-6M10 14l-7 7" />
+            </svg>
+          </button>
+        )}
 
         {/* 커스텀 네이티브 스타일 컨트롤 */}
         {showControls && (
