@@ -17,7 +17,7 @@ export default function VideoPlayer() {
   const [showControls, setShowControls] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isTablet, setIsTablet] = useState(false)
-  const [isPlaying, setIsPlaying] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<HTMLIFrameElement>(null)
   const [playerReady, setPlayerReady] = useState(false)
@@ -64,6 +64,13 @@ export default function VideoPlayer() {
         // @ts-ignore
         player = new window.Vimeo.Player(playerRef.current)
 
+        // 처음부터 자동 재생 시도
+        player.play().catch((err: any) => {
+          console.error('자동 재생 실패:', err)
+          // 자동 재생이 실패했을 경우에만 isPlaying을 false로 설정
+          setIsPlaying(false)
+        })
+
         // 가능한 최고 화질로 설정 (1080p)
         player.on('loaded', () => {
           player
@@ -78,60 +85,41 @@ export default function VideoPlayer() {
             })
             .catch((err: any) => console.error('화질 설정 에러:', err))
 
-          // 소리 켜기
-          player
-            .setVolume(1)
-            .then(() => {
-              console.log('소리 활성화됨')
-            })
-            .catch((err: any) => console.error('볼륨 설정 에러:', err))
-
-          // 음소거 해제
-          player
-            .setMuted(false)
-            .then(() => {
-              console.log('음소거 해제됨')
-            })
-            .catch((err: any) => console.error('음소거 해제 에러:', err))
-
-          // 태블릿이나 모바일에서는 자동재생 정책 때문에 로딩 후 바로 재생
-          if (isMobile || isTablet) {
+          // 태블릿이나 모바일에서 자동 재생 정책으로 인해 재생이 안 됐을 경우 다시 시도
+          if ((isMobile || isTablet) && !isPlaying) {
             setTimeout(() => {
-              try {
-                player
-                  .play()
-                  .then(() => {
-                    console.log('모바일/태블릿에서 비디오 재생 시작')
-                    setIsPlaying(true)
-                    setIsLoading(false)
-                  })
-                  .catch((err: any) => {
-                    console.error('모바일/태블릿 재생 에러:', err)
-                    // 자동 재생이 실패한 경우 플레이 오버레이 표시
-                    setIsLoading(false)
-                  })
-              } catch (err) {
-                console.error('모바일/태블릿 재생 시도 에러:', err)
-                setIsLoading(false)
-              }
-            }, 500) // 약간의 지연 후 재생 시도
+              player
+                .play()
+                .then(() => {
+                  console.log('모바일/태블릿에서 비디오 재생 시작')
+                  setIsPlaying(true)
+                  setIsLoading(false)
+                })
+                .catch((err: any) => {
+                  console.error('모바일/태블릿 재생 에러:', err)
+                  setIsLoading(false)
+                })
+            }, 500)
           }
         })
 
-        // 재생 완료된 경우
+        // 재생 시작된 경우
         player.on('playing', () => {
           setIsPlaying(true)
           setIsLoading(false)
+          console.log('비디오 재생 시작됨')
         })
 
         // 에러 처리
         player.on('error', (err: any) => {
           console.error('Vimeo 플레이어 에러:', err)
           setIsLoading(false)
+          setIsPlaying(false) // 에러 발생 시 isPlaying을 false로 설정
         })
       } catch (error) {
         console.error('Vimeo Player 초기화 에러:', error)
         setIsLoading(false)
+        setIsPlaying(false) // 초기화 실패 시 isPlaying을 false로 설정
       }
     }
 
@@ -238,11 +226,11 @@ export default function VideoPlayer() {
       '&title=0&byline=0&portrait=0&transparent=0&dnt=1&quality=1080p'
 
     if (isTablet) {
-      // 태블릿: iPad/Android 태블릿 최적화
-      return `${baseUrl}${commonParams}&playsinline=1&controls=1&muted=1`
+      // 태블릿: iPad/Android 태블릿 최적화 - 자동재생 파라미터 추가
+      return `${baseUrl}&autoplay=1${commonParams}&playsinline=1&controls=1&muted=1`
     } else if (isMobile) {
       // 모바일: 자동재생을 위해 처음에는 음소거, playsinline 추가
-      return `${baseUrl}${commonParams}&playsinline=1&controls=1&muted=1`
+      return `${baseUrl}&autoplay=1${commonParams}&playsinline=1&controls=1&muted=1`
     } else {
       // 데스크톱: 소리와 함께 자동 재생
       return `${baseUrl}&autoplay=1${commonParams}&controls=0&muted=0`
@@ -268,7 +256,7 @@ export default function VideoPlayer() {
           </div>
         )}
 
-        {/* 모바일/태블릿에서 비디오가 자동 재생되지 않을 때 표시할 재생 버튼 */}
+        {/* 모바일/태블릿에서 비디오가 자동 재생되지 않을 때만 표시할 재생 버튼 */}
         {(isMobile || isTablet) && !isPlaying && !isLoading && (
           <div
             className="absolute inset-0 flex items-center justify-center z-30 bg-black/70"
@@ -326,6 +314,42 @@ export default function VideoPlayer() {
               <path d="M15 3h6v6M14 10l7-7M9 21H3v-6M10 14l-7 7" />
             </svg>
           </button>
+        )}
+
+        {/* 음소거 해제 버튼 (태블릿/모바일 자동재생 시) */}
+        {(isTablet || isMobile) && isPlaying && (
+          <div className="absolute bottom-24 left-0 right-0 flex justify-center z-30">
+            <button
+              className="bg-white/20 p-3 rounded-full text-white backdrop-blur-sm"
+              onClick={() => {
+                if (playerRef.current && window.Vimeo) {
+                  try {
+                    const player = new window.Vimeo.Player(playerRef.current)
+                    player.setMuted(false)
+                    player.setVolume(1)
+                  } catch (err) {
+                    console.error('음소거 해제 에러:', err)
+                  }
+                }
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+              </svg>
+            </button>
+          </div>
         )}
 
         {/* 커스텀 네이티브 스타일 컨트롤 */}
