@@ -18,6 +18,7 @@ export default function VideoPlayer() {
   const [isMobile, setIsMobile] = useState(false)
   const [isTablet, setIsTablet] = useState(false)
   const [isPlaying, setIsPlaying] = useState(true)
+  const [autoplayAttempted, setAutoplayAttempted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<HTMLIFrameElement>(null)
   const [playerReady, setPlayerReady] = useState(false)
@@ -64,11 +65,32 @@ export default function VideoPlayer() {
         // @ts-ignore
         player = new window.Vimeo.Player(playerRef.current)
 
+        // 자동 재생 시도 표시
+        setAutoplayAttempted(true)
+
         // 처음부터 자동 재생 시도
         player.play().catch((err: any) => {
           console.error('자동 재생 실패:', err)
-          // 자동 재생이 실패했을 경우에만 isPlaying을 false로 설정
-          setIsPlaying(false)
+
+          // 태블릿에서는 자동 재생 실패해도 재생 중으로 간주 (버튼 숨김 유지)
+          if (!isTablet) {
+            setIsPlaying(false)
+          }
+
+          // 태블릿에서 재생이 실패한 경우 무음으로 다시 시도
+          if (isTablet) {
+            player.setMuted(true).then(() => {
+              player
+                .play()
+                .then(() => {
+                  setIsPlaying(true)
+                  console.log('무음 모드로 재생 성공')
+                })
+                .catch((e: any) =>
+                  console.error('무음으로도 자동 재생 실패:', e)
+                )
+            })
+          }
         })
 
         // 가능한 최고 화질로 설정 (1080p)
@@ -85,21 +107,14 @@ export default function VideoPlayer() {
             })
             .catch((err: any) => console.error('화질 설정 에러:', err))
 
-          // 태블릿이나 모바일에서 자동 재생 정책으로 인해 재생이 안 됐을 경우 다시 시도
-          if ((isMobile || isTablet) && !isPlaying) {
-            setTimeout(() => {
+          // 태블릿에서 재생이 안되는 경우 강제로 소리 없이 재생 시도
+          if (isTablet && !isPlaying && autoplayAttempted) {
+            player.setMuted(true).then(() => {
               player
                 .play()
-                .then(() => {
-                  console.log('모바일/태블릿에서 비디오 재생 시작')
-                  setIsPlaying(true)
-                  setIsLoading(false)
-                })
-                .catch((err: any) => {
-                  console.error('모바일/태블릿 재생 에러:', err)
-                  setIsLoading(false)
-                })
-            }, 500)
+                .then(() => console.log('소리 없이 재생 시작'))
+                .catch((e: any) => console.error('최종 재생 시도 실패:', e))
+            })
           }
         })
 
@@ -173,7 +188,14 @@ export default function VideoPlayer() {
         player.unload()
       }
     }
-  }, [showControls, playerReady, isMobile, isTablet, isPlaying])
+  }, [
+    showControls,
+    playerReady,
+    isMobile,
+    isTablet,
+    isPlaying,
+    autoplayAttempted,
+  ])
 
   const handleBack = () => {
     router.back()
@@ -235,8 +257,8 @@ export default function VideoPlayer() {
       '&title=0&byline=0&portrait=0&transparent=0&dnt=1&quality=1080p'
 
     if (isTablet) {
-      // 태블릿: iPad/Android 태블릿 최적화 - 자동재생 파라미터 추가
-      return `${baseUrl}&autoplay=1${commonParams}&playsinline=1&controls=1&muted=1`
+      // 태블릿: 무음으로 자동재생 (브라우저 정책에 맞춤)
+      return `${baseUrl}&autoplay=1${commonParams}&playsinline=1&controls=1&muted=1&autopause=0&background=1`
     } else if (isMobile) {
       // 모바일: 자동재생을 위해 처음에는 음소거, playsinline 추가
       return `${baseUrl}&autoplay=1${commonParams}&playsinline=1&controls=1&muted=1`
@@ -265,8 +287,8 @@ export default function VideoPlayer() {
           </div>
         )}
 
-        {/* 모바일/태블릿에서 비디오가 자동 재생되지 않을 때만 표시할 재생 버튼 */}
-        {(isMobile || isTablet) && !isPlaying && !isLoading && (
+        {/* 모바일에서만 비디오가 자동 재생되지 않을 때 표시할 재생 버튼 (태블릿 제외) */}
+        {isMobile && !isTablet && !isPlaying && !isLoading && (
           <div
             className="absolute inset-0 flex items-center justify-center z-30 bg-black/70"
             onClick={startPlayback}
