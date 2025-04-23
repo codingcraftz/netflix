@@ -50,9 +50,28 @@ export default function VideoPlayer() {
         isMobile: isMobileDevice,
         userAgent,
       })
+
+      // Safari 브라우저에서 스크롤 방지
+      if (/safari/i.test(userAgent) && !/chrome/i.test(userAgent)) {
+        // Safari 브라우저일 경우 body에 overflow hidden 추가
+        document.body.style.overflow = 'hidden'
+        document.documentElement.style.overflow = 'hidden'
+        document.body.style.position = 'fixed'
+        document.body.style.width = '100%'
+        document.body.style.height = '100%'
+      }
     }
 
     detectDeviceType()
+
+    return () => {
+      // 컴포넌트 언마운트 시 스타일 초기화
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+      document.body.style.height = ''
+    }
   }, [])
 
   useEffect(() => {
@@ -135,6 +154,19 @@ export default function VideoPlayer() {
           setIsPlaying(true)
           setIsLoading(false)
           console.log('비디오 재생 시작됨')
+
+          // 재생 시작 후 1.5초 뒤에 소리 자동 활성화 시도
+          setTimeout(() => {
+            player
+              .setMuted(false)
+              .then(() => {
+                player
+                  .setVolume(1)
+                  .then(() => console.log('소리 자동 활성화 성공'))
+                  .catch((err: any) => console.error('볼륨 설정 실패:', err))
+              })
+              .catch((err: any) => console.error('음소거 해제 실패:', err))
+          }, 1500)
         })
 
         // 에러 처리
@@ -292,6 +324,10 @@ export default function VideoPlayer() {
       <div
         ref={containerRef}
         className="w-full h-screen bg-black relative flex items-center justify-center overflow-hidden"
+        style={{
+          touchAction: 'none', // 터치 스크롤 방지
+          WebkitOverflowScrolling: 'touch' as any, // Safari 스크롤 제어
+        }}
       >
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center z-20">
@@ -326,16 +362,61 @@ export default function VideoPlayer() {
           </div>
         )}
 
-        <div className="w-full h-full">
+        <div className="w-full h-full overflow-hidden">
           <iframe
             ref={playerRef}
             src={getVideoSrc()}
-            className="w-[calc(100%+240px)] h-[calc(100%+150px)] absolute -top-[75px] -left-[120px]"
+            className="w-full h-full object-cover"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '100vw',
+              height: '100vh',
+              maxWidth: 'none',
+              maxHeight: 'none',
+              objectFit: 'cover',
+            }}
             frameBorder="0"
             allow="autoplay; fullscreen; picture-in-picture"
             allowFullScreen
           ></iframe>
         </div>
+
+        {/* 소리 켜기 버튼 (재생 중이고 탭/클릭 시) */}
+        {isPlaying && showControls && (
+          <button
+            onClick={() => {
+              if (playerRef.current && window.Vimeo) {
+                try {
+                  const player = new window.Vimeo.Player(playerRef.current)
+                  player.setMuted(false)
+                  player.setVolume(1)
+                } catch (err) {
+                  console.error('음소거 해제 에러:', err)
+                }
+              }
+            }}
+            className="absolute bottom-20 right-5 p-3 rounded-full bg-black/30 text-white z-30 backdrop-blur-sm"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
+          </button>
+        )}
 
         {/* 넷플릭스 스타일 미니멀 UI - 뒤로가기 버튼만 표시 */}
         {showControls && (
